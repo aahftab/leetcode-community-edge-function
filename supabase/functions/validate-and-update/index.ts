@@ -66,7 +66,7 @@ app.post("/validate-and-update", async (req, res) => {
               .then(async (data) => {
                 console.log(data);
                 if (data.count > 0) {
-                  const findTargetSlug = (data, targetSlug) => {
+                  const findTargetSlug = (data, problemUrl) => {
                     for (const submission of data.submission) {
                       if (problemUrl.includes(submission.titleSlug)) {
                         return submission;
@@ -75,7 +75,7 @@ app.post("/validate-and-update", async (req, res) => {
                     return null;
                   };
 
-                  const result = findTargetSlug(data, targetSlug);
+                  const result = findTargetSlug(data, problemUrl);
                   if (result) {
                     try {
                       await client.connect();
