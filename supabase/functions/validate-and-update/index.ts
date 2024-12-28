@@ -1,21 +1,21 @@
 // @deno-types="npm:@types/express@^4.17"
-import express from 'express'
-import cors from 'cors';
-import { Client} from 'deno-postgres'
+import express from "express";
+import cors from "cors";
+import { Client } from "deno-postgres";
 
-const app = express()
-app.use(express.json())
+const app = express();
+app.use(express.json());
 // If you want a payload larger than 100kb, then you can tweak it here:
 // app.use( express.json({ limit : "300kb" }));
-//allow request from all origin
 const corsOptions = {
-  origin: '*', // or specify the allowed origin
-  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-  allowedHeaders: ['Content-Type', 'Authorization']
+  origin: "*", // or specify the allowed origin
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+  allowedHeaders: ["Content-Type", "Authorization"],
 };
 
 app.use(cors(corsOptions));
-const port = 3000
+const port = 3001;
+
 const options = {
   host: Deno.env.get("PGHOST"),
   port: Number(Deno.env.get("PGPORT")),
@@ -25,7 +25,7 @@ const options = {
   pool_mode: 'transaction',
 };
 console.log(options)
-const client = new Client(options);  
+const client = new Client(options);
 
 try {
   await client.connect();
@@ -35,36 +35,83 @@ try {
   throw err;
 }
 
-app.get('/validate-and-update', (req, res) => {
-  console.log("served")
-  res.json({message:'Hello World!'})
-})
+app.get("/validate-and-update", (req, res) => {
+  console.log("served");
+  res.json({ message: "Hello World!" });
+});
 
-app.post('/validate-and-update', (req, res) => {
-  if(req.body.userData === undefined || req.body.problemUrl === undefined) {
-    console.log('No body found')
-    res.status(400).json({message:'error'})
+app.post("/validate-and-update", async (req, res) => {
+  if (req.body.userData === undefined || req.body.problemUrl === undefined) {
+    console.log("No body found");
+    console.log(req.body);
+    res
+      .status(400)
+      .json({ message: "Either you are not signed in or wrong problem url" });
+  } else {
+    const { userData, problemUrl } = req.body;
+    console.log("userData:", userData);
+    console.log("problemUrl:", problemUrl);
+    const username_api = `https://leetcode-api-q01j.onrender.com/${userData.username}`;
+    await fetch(username_api)
+      .then((response) => response.json())
+      .then(async (data) => {
+        if (data.username) {
+          console.log("Username found");
+          const recent_submission_api = `https://leetcode-api-q01j.onrender.com/${userData.username}/acSubmission`;
+          await fetch(recent_submission_api)
+            .then((response) => response.json())
+            .then(async (data) => {
+              console.log(data)
+              if (data.count > 0) {
+                const targetSlug = problemUrl
+
+                const findTargetSlug = (data, targetSlug) => {
+                  for (const submission of data.submission) {
+                    if (targetSlug.includes(submission.titleSlug)) {
+                      return submission;
+                    }
+                  }
+                  return null;
+                };
+
+                const result = findTargetSlug(data, targetSlug);
+                if (result) {
+                  try {
+                    await client.connect();
+                    console.log('Successfully connected to PostgreSQL');
+                    const userIdResult = await client.queryObject(`SELECT id FROM "Participants" WHERE username = '${userData.username}'`)
+                    const questionIdResult = await client.queryObject(`SELECT id FROM "Questions" WHERE question_slug = '${result.titleSlug}'`)
+                    console.log("userId:", userIdResult);
+                    console.log("questionId:", questionIdResult);
+                    if(userIdResult.rowCount>0 && questionIdResult.rowCount>0) {
+                      const checkIfAlreadySubmittedResult = await client.queryObject(`SELECT * FROM "Solutions" WHERE participant_id = ${userIdResult.rows[0].id} AND question_id = ${questionIdResult.rows[0].id}`);
+                      if(checkIfAlreadySubmittedResult.rowCount>0) {
+                        console.log("Already submitted");
+                        return res.status(409).json({ message: "Already submitted"});
+                      } else {
+                        const insertSolution = await client.queryObject(`INSERT INTO "Solutions" (participant_id, question_id, solved_at) VALUES (${userIdResult.rows[0].id}, ${questionIdResult.rows[0].id}, NOW()::timestamp(0))`);
+                        console.log("Inserted solution:", insertSolution.rows);
+                        return res.status(200).json({ message: "Successfully submitted"});
+                      }
+                    }                    
+                  } catch (err) {
+                    console.error('Error connecting to PostgreSQL:', err);
+                    return res.status(400).json({ message: "Couldn't connect to database"});
+                  }
+                  console.log("Target slug found:", result);
+                  return res.status(200).json({ message: "Target slug found"});
+                } else {
+                  console.log("Target slug not found");
+                  return res.status(404).json({ message: "Target slug not found"});
+                }
+              }
+            });
+        }
+      });
+    res.json({ message: "Hello World!" });
   }
-  else {
-    const { userData, problemUrl } = req.body
-    console.log('userData:', userData)
-    console.log('problemUrl:', problemUrl)
-    res.json({message:'Hello World!'})
-  }
-})
+});
 
 app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-})
-
-/* To invoke locally:
-
-  1. Run `supabase start` (see: https://supabase.com/docs/reference/cli/supabase-start)
-  2. Make an HTTP request:
-
-  curl -i --location --request POST 'http://127.0.0.1:54321/functions/v1/validate-and-update' \
-    --header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0' \
-    --header 'Content-Type: application/json' \
-    --data '{"name":"Functions"}'
-
-*/
+  console.log(`Example app listening on port ${port}`);
+});
