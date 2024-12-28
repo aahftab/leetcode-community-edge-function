@@ -76,15 +76,15 @@ app.post("/validate-and-update", async (req, res) => {
                   };
 
                   const result = findTargetSlug(data, problemUrl);
-                  if (result) {
-                    try {
-                      await client.connect();
-                      console.log("Successfully connected to PostgreSQL");
+                  try {
+                    await client.connect();
+                    console.log("Successfully connected to PostgreSQL");
+                    if (result) {
                       const userIdResult = await client.queryObject(
                         `SELECT id FROM "Participants" WHERE username = '${userData.username}'`
                       );
                       const questionIdResult = await client.queryObject(
-                        `SELECT id FROM "Questions" WHERE question_slug = '${result.titleSlug}'`
+                        `SELECT id FROM "Questions" WHERE question_slug = '${result.titleSlug}' AND date_to_solve <= CURRENT_DATE`
                       );
                       console.log("userId:", userIdResult);
                       console.log("questionId:", questionIdResult);
@@ -100,10 +100,10 @@ app.post("/validate-and-update", async (req, res) => {
                           console.log("Already submitted");
                           return res
                             .status(409)
-                            .json({ message: "Already submitted" });
+                            .json({ message: "This problem is already solved by you" });
                         } else {
                           const insertSolutionResult = await client.queryObject(
-                            `INSERT INTO "Solutions" (participant_id, question_id, solved_at) VALUES (${userIdResult.rows[0].id}, ${questionIdResult.rows[0].id}, NOW()::timestamp(0))`
+                            `INSERT INTO "Solutions" (participant_id, question_id, solved_at) VALUES (${userIdResult.rows[0].id}, ${questionIdResult.rows[0].id}, NOW()::timestamp(0)) returning *`
                           );
                           console.log(
                             "Inserted solution:",
@@ -111,24 +111,24 @@ app.post("/validate-and-update", async (req, res) => {
                           );
                           return res
                             .status(200)
-                            .json({ message: "Successfully submitted" });
+                            .json({ message: "Congratulations! You made it to the dashboard" });
                         }
                       }
-                    } catch (err) {
-                      console.error("Error connecting to PostgreSQL:", err);
+                      else if(questionIdResult.rowCount === 0){
+                        console.log("Question not found");
+                        return res.status(404).json({ message: "Sorry! This question is not posted by us and can't be uploaded to our server" });
+                      }
+                    } else {
+                      console.log("Question not solved by participant");
                       return res
-                        .status(400)
-                        .json({ message: "Couldn't connect to database" });
+                        .status(406)
+                        .json({ message: "Please solve this problem first. \nIf you already solved then try to submit solution to Leetcode again" });
                     }
-                    console.log("Target slug found:", result);
+                  } catch (err) {
+                    console.error("Error connecting to PostgreSQL:", err);
                     return res
-                      .status(200)
-                      .json({ message: "Target slug found" });
-                  } else {
-                    console.log("Target slug not found");
-                    return res
-                      .status(404)
-                      .json({ message: "Target slug not found" });
+                      .status(500)
+                      .json({ message: "Server Error\nCouldn't connect to database" });
                   }
                 }
               });
