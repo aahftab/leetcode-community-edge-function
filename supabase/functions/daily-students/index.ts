@@ -39,7 +39,7 @@ FROM
   JOIN "Questions" as Q ON S.question_id = Q.id
 WHERE
   Q.date_to_solve = ${Deno.env.get("DEV")?`'2024-12-28'`:'CURRENT_DATE'}
-  AND DATE (S.solved_at) = '2024-12-28'
+  AND DATE (S.solved_at) = ${Deno.env.get("DEV")?`'2024-12-28'`:'CURRENT_DATE'}
 `).then((result) => result.rows);
   res.status(200).json(participants);
 });
