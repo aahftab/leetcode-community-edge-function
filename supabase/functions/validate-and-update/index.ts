@@ -76,6 +76,7 @@ app.post("/validate-and-update", async (req, res) => {
                   };
 
                   const result = findTargetSlug(data, problemUrl);
+                  console.log("result:", result);
                   try {
                     await client.connect();
                     console.log("Successfully connected to PostgreSQL");
@@ -103,7 +104,7 @@ app.post("/validate-and-update", async (req, res) => {
                             .json({ message: "This problem is already solved by you" });
                         } else {
                           const insertSolutionResult = await client.queryObject(
-                            `INSERT INTO "Solutions" (participant_id, question_id, solved_at) VALUES (${userIdResult.rows[0].id}, ${questionIdResult.rows[0].id}, NOW()::timestamp(0)) returning *`
+                            `INSERT INTO "Solutions" (participant_id, question_id, lang, solved_at) VALUES (${userIdResult.rows[0].id}, ${questionIdResult.rows[0].id}, '${result.lang}', NOW()::timestamp(0)) returning *`
                           );
                           console.log(
                             "Inserted solution:",
