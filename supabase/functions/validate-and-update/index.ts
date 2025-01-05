@@ -115,6 +115,10 @@ app.post("/validate-and-update", async (req, res) => {
                             .json({ message: "Congratulations! You made it to the dashboard" });
                         }
                       }
+                      else if(userIdResult.rowCount === 0){
+                        console.log("Username not found");
+                        return res.status(404).json({ message: "Username not found\nPlease signup for community" });
+                      }
                       else if(questionIdResult.rowCount === 0){
                         console.log("Question not found");
                         return res.status(404).json({ message: "Sorry! This question is not posted by us and can't be uploaded to our server" });
