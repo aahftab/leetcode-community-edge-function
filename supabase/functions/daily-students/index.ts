@@ -9,16 +9,8 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-const options = {
-  host: Deno.env.get("PGHOST"),
-  port: Number(Deno.env.get("PGPORT")),
-  database: Deno.env.get("PGDATABASE"),
-  user: Deno.env.get("PGUSER"),
-  password: Deno.env.get("PGPASSWORD"),
-  pool_mode: "transaction",
-};
 
-const client = new Client(options);
+const client = new Client(Deno.env.get("SUPABASE_DB_URL"));
 
 try {
   await client.connect();

@@ -18,17 +18,10 @@ const port = 3001;
 const orender_headers = {
   limit_skip_token: "aahftab",
 };
-const options = {
-  host: Deno.env.get("PGHOST"),
-  port: Number(Deno.env.get("PGPORT")),
-  database: Deno.env.get("PGDATABASE"),
-  user: Deno.env.get("PGUSER"),
-  password: Deno.env.get("PGPASSWORD"),
-  pool_mode: "transaction",
-};
-console.log(options);
-const client = new Client(options);
 
+
+const client = new Client(Deno.env.get("SUPABASE_DB_URL"));
+  
 try {
   await client.connect();
   console.log("Successfully connected to PostgreSQL");
@@ -85,7 +78,7 @@ app.post("/validate-and-update", async (req, res) => {
                         `SELECT id FROM "Participants" WHERE username = '${userData.username}'`
                       );
                       const questionIdResult = await client.queryObject(
-                        `SELECT id FROM "Questions" WHERE question_slug = '${result.titleSlug}' AND date_to_solve <= CURRENT_DATE`
+                        `SELECT id FROM "Questions" WHERE question_slug = '${result.titleSlug}' AND date_to_solve <= CURRENT_DATE order by date_to_solve desc`
                       );
                       console.log("userId:", userIdResult);
                       console.log("questionId:", questionIdResult);

@@ -1,4 +1,10 @@
 {
+  "name": "supabase-node",
+  "version": "1.0.0",
+  "description": "Supabase Node.js functions",
+  "scripts": {
+    "dev": "npx supabase functions serve --env-file ./supabase/.env.local"
+  },
   "devDependencies": {
     "supabase": "^2.1.1"
   },

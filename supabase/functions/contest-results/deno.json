@@ -1,0 +1,7 @@
+{
+  "imports": {
+    "express": "npm:express@4.21.2",
+    "cors": "npm:cors@2.8.5",
+    "deno-postgres": "https://deno.land/x/postgres@v0.17.0/mod.ts"
+  }
+}

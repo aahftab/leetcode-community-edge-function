@@ -1,0 +1,20 @@
+tables
+
+contests
+(id, name, code, date, start_time, end_time)
+
+contest_participants
+(id, participants.id, contests.id)
+
+contest_questions
+(id, question.id, contests.id)
+
+query(`SELECT "Participants".name from "contest_participants" 
+join
+"contests" on "contest_participants".contest_id = "contests`".id 
+join 
+"participants" on "contests".participants.id = "participants".id
+join "questions" on "questions".id` = "contest_questions".question_id
+join "Solutions" on "Solutions".solved_at::time > "contests".start_time
+AND 
+"Solutions".solved_at::time < "contests".end_time)
